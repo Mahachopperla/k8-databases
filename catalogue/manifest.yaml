@@ -1,0 +1,101 @@
+#backend components doesn't require statefulset , they need deployment only
+#but let's create autoscaling policy for backend application
+# 2 things need to check before going to create autoscaling policy
+
+# 1. make sure metrics server is running - there will be metrics server created automatically when u create a kubernates cluster
+# 			- to verify go to cluster in aws portal and - choose add-ons then u can see metrics server under add-ons
+# 		2. we should mention resources requests and limits in pods - so that pod can track the usage limits of metrics like cpu and memory
+		
+#     if these 2 checks are done then we can crete autoscaling policy for our backend applications
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: catalogue
+  namespace:  roboshop
+  labels:
+    component: catalogue
+    project: roboshop
+    tier: app
+data:
+  MONGO:  "true"
+  MONGO_URL:  "mongodb://mongodb:27017/catalogue"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalogue
+  namespace:  roboshop
+  labels:
+    component: catalogue
+    project: roboshop
+    tier: app
+spec:
+  replicas: 1
+  # These are the labels replica set use to create pod replicas, this should match pod labels
+  selector:
+    matchLabels:
+      component: catalogue
+      project: roboshop
+      tier: app
+  # this is pod definition
+  template:
+    metadata:
+      labels:
+        component: catalogue
+        project: roboshop
+        tier: app
+    spec:
+      containers:
+      - name: catalogue
+        image: maha110/catalogue:v1 # this image is already buld in docker and pushed to docker hub. we are using it here to run container.
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
+        envFrom:
+        - configMapRef:
+            name: catalogue
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalogue
+  namespace: roboshop # dont forget to mention this.
+  #labels in service are used to filter service based on labels . 
+  labels:
+    component: catalogue
+    project: roboshop
+    tier: app
+spec:
+  selector:
+    component: catalogue
+    project: roboshop
+    tier: app
+  ports:
+    - protocol: TCP
+      port: 8080 # this is source(service) port
+      targetPort: 8080 # container port
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: catalogue
+  namespace:  roboshop
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: catalogue
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 10
