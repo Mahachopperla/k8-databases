@@ -4,10 +4,8 @@
 
 # 1. make sure metrics server is running - there will be metrics server created automatically when u create a kubernates cluster
 # 			- to verify go to cluster in aws portal and - choose add-ons then u can see metrics server under add-ons
-# 		2. we should mention resources requests and limits in pods - so that pod can track the usage limits of metrics like cpu and memory
-		
+# 		2. we should mention resources requests and limits in pods - so that pod can track the usage limits of metrics like cpu and memory	
 #     if these 2 checks are done then we can crete autoscaling policy for our backend applications
-
 apiVersion: v1
 kind: ConfigMap
 metadata:
