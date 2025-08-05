@@ -1,80 +1,78 @@
-# statefull applications like db isntances requires headless service for internal communications, normal service for exteranl pod-pod communications,statefull set resource to create isntances and pv,pvc and sc
-#we already have a 
-
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb-headless
-  namespace:  roboshop
+  name: redis-headless
+  namespace: roboshop # dont forget to mention this.
+  #labels in service are used to filter service based on labels . 
   labels:
-    component: mongodb
+    component: redis
     project: roboshop
     tier: database
 spec:
   clusterIP: None
   selector:
-    component: mongodb
+    component: redis
     project: roboshop
     tier: database
   ports:
     - protocol: TCP
-      port: 27017 # this is source(service) port
-      targetPort: 27017 # container port
+      port: 6379 # this is source(service) port
+      targetPort: 6379 # container port
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb
+  name: redis
   namespace: roboshop # dont forget to mention this.
   #labels in service are used to filter service based on labels . 
   labels:
-    component: mongodb
+    component: redis
     project: roboshop
     tier: database
 spec:
   selector:
-    component: mongodb
+    component: redis
     project: roboshop
     tier: database
   ports:
     - protocol: TCP
-      port: 27017 # this is source(service) port
-      targetPort: 27017 # container port
+      port: 6379 # this is source(service) port
+      targetPort: 6379 # container port
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mongodb
+  name: redis
   namespace:  roboshop
   labels:
-    component: mongodb
+    component: redis
     project: roboshop
     tier: database
 spec:
   selector:
     matchLabels:
-      component: mongodb
+      component: redis
       project: roboshop
       tier: database # has to match .spec.template.metadata.labels
-  serviceName: "mongodb-headless" # this should be the headless service name because statefulset requires headless service to communicate to pods directly without clusterIp
+  serviceName: "redis-headless" # this should be the headless service name because statefulset requires headless service to communicate to pods directly without clusterIp
   replicas: 2 # by default is 1
   template:
     metadata:
       labels:
-        component: mongodb
+        component: redis
         project: roboshop
         tier: database  # has to match .spec.selector.matchLabels
     spec:
       containers:
-      - name: mongodb
-        image: maha110/mongodb:v1
+      - name: redis
+        image: maha110/redis:v1
         volumeMounts:
-        - name: mongodb-data
-          mountPath: /data/db
+        - name: redis-data
+          mountPath: /data
       # this is pvc created directly in statfulset resource itself
   volumeClaimTemplates:
   - metadata:
-      name: mongodb-data
+      name: redis-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
       storageClassName: "roboshop-ebs"

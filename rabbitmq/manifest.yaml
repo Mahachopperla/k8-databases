@@ -1,80 +1,95 @@
-# statefull applications like db isntances requires headless service for internal communications, normal service for exteranl pod-pod communications,statefull set resource to create isntances and pv,pvc and sc
-#we already have a 
-
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rabbitmq
+  namespace:  roboshop
+  labels:
+    component: rabbitmq
+    project: roboshop
+    tier: database
+type: Opaque
+data:
+  RABBITMQ_DEFAULT_USER: "cm9ib3Nob3A="
+  RABBITMQ_DEFAULT_PASS: "cm9ib3Nob3AxMjM="
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb-headless
-  namespace:  roboshop
+  name: rabbitmq-headless
+  namespace: roboshop # dont forget to mention this.
+  #labels in service are used to filter service based on labels . 
   labels:
-    component: mongodb
+    component: rabbitmq
     project: roboshop
     tier: database
 spec:
   clusterIP: None
   selector:
-    component: mongodb
+    component: rabbitmq
     project: roboshop
     tier: database
   ports:
     - protocol: TCP
-      port: 27017 # this is source(service) port
-      targetPort: 27017 # container port
+      port: 5672 # this is source(service) port
+      targetPort: 5672 # container port
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mongodb
+  name: rabbitmq
   namespace: roboshop # dont forget to mention this.
   #labels in service are used to filter service based on labels . 
   labels:
-    component: mongodb
+    component: rabbitmq
     project: roboshop
     tier: database
 spec:
   selector:
-    component: mongodb
+    component: rabbitmq
     project: roboshop
     tier: database
   ports:
     - protocol: TCP
-      port: 27017 # this is source(service) port
-      targetPort: 27017 # container port
+      port: 5672 # this is source(service) port
+      targetPort: 5672 # container port
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mongodb
+  name: rabbitmq
   namespace:  roboshop
   labels:
-    component: mongodb
+    component: rabbitmq
     project: roboshop
     tier: database
 spec:
   selector:
     matchLabels:
-      component: mongodb
+      component: rabbitmq
       project: roboshop
       tier: database # has to match .spec.template.metadata.labels
-  serviceName: "mongodb-headless" # this should be the headless service name because statefulset requires headless service to communicate to pods directly without clusterIp
+  serviceName: "rabbitmq-headless" # this should be the headless service name because statefulset requires headless service to communicate to pods directly without clusterIp
   replicas: 2 # by default is 1
   template:
     metadata:
       labels:
-        component: mongodb
+        component: rabbitmq
         project: roboshop
         tier: database  # has to match .spec.selector.matchLabels
     spec:
       containers:
-      - name: mongodb
-        image: maha110/mongodb:v1
+      - name: rabbitmq
+        image: maha110/rabbitmq:v1
+        envFrom:
+          - secretRef:
+              name: rabbitmq
         volumeMounts:
-        - name: mongodb-data
-          mountPath: /data/db
+        - name: rabbitmq-data
+          mountPath: /var/lib/rabbitmq
       # this is pvc created directly in statfulset resource itself
   volumeClaimTemplates:
   - metadata:
-      name: mongodb-data
+      name: rabbitmq-data
     spec:
       accessModes: [ "ReadWriteOnce" ]
       storageClassName: "roboshop-ebs"
